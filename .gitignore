@@ -1,0 +1,46 @@
+########################
+# OS 공통 / macOS
+########################
+.DS_Store
+Thumbs.db
+
+########################
+# IntelliJ / IDE 파일
+########################
+.idea/
+*.iml
+*.ipr
+*.iws
+
+.vscode/
+*.swp
+
+########################
+# 빌드 산출물 (Gradle / Java)
+########################
+/build/
+/out/
+/target/
+/.gradle/
+
+*.log
+hs_err_pid*
+replay_pid*
+
+########################
+# 환경 변수 / 민감 정보
+########################
+.env
+.env.*
+*.jks
+*.p12
+*.keystore
+
+# 필요하면 로컬 설정용 yml/properties는 따로 두고 무시
+application-local.yml
+application-local.properties
+
+########################
+# 기타
+########################
+node_modules/
