@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "bangbang-backend-test": {
+      "command": "npx",
+      "args": ["tsx", "/Users/SSAFY/Desktop/mcpDevelop/webApiTestMCP/mcp-backend-test/server.ts"]
+    }
+  }
+}

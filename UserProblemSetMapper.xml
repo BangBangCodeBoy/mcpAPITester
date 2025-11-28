@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.codeboy.mvc.model.dao.UserProblemSetDao">
+
+    <!-- 모든 문제 세트들 조회   -->
+    <select id="selectUserProblemSets" resultType="UserProblemSet">
+        SELECT *
+        FROM user_problem_set
+    </select>
+
+    <!-- 회원 아이디를 통해 자신이 제작한 문제세트들을 마이페이지에서 조회  -->
+    <select id="selectUserProblemSetByMemberId" resultType="UserProblemSet">
+        SELECT *
+        FROM user_problem_set
+        WHERE member_id = #{memberId}
+    </select>
+
+    <!-- 문제 세트 등록  -->
+    <insert id="insertUserProblemSet"
+            parameterType="UserProblemSet"
+            useGeneratedKeys="true"
+            keyProperty="userProblemSetId">
+        INSERT INTO user_problem_set (member_id)
+        VALUES (#{memberId})
+    </insert>
+
+    <!-- 문제세트 삭제 -->
+    <delete id="deleteUserProblemSetById">
+        DELETE FROM user_problem_set
+        WHERE user_problem_set_id = #{userProblemSetId}
+    </delete>
+
+
+
+</mapper>

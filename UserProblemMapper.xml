@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.codeboy.mvc.model.dao.UserProblemDao">
+
+
+    <!-- 특정 문제세트 안의 문제들 조회   -->
+    <select id="selectProblemsByUserProblemSetId" resultType="UserProblem">
+        SELECT *
+        FROM user_problem
+        WHERE user_problem_set_id = #{userProblemSetId}
+    </select>
+
+
+    <!-- 문제 등록-->
+    <insert id="insertUserProblemList" parameterType="java.util.List">
+        INSERT INTO user_problem
+        (problem_description, category, choice_1, choice_2, choice_3, choice_4, answer, comment_count, user_problem_set_id)
+        VALUES
+        <foreach collection="list" item="item" separator=",">
+            (#{item.problemDescription}, #{item.category}, #{item.choice1}, #{item.choice2}, #{item.choice3}, #{item.choice4}, #{item.answer}, #{item.commentCount}, #{item.userProblemSetId})
+        </foreach>
+    </insert>
+
+
+    <!-- 문제 수정 -->
+    <update id="updateUserProblem">
+        UPDATE user_problem
+        SET problem_description = #{problemDescription},
+            category = #{category},
+            choice_1 = #{choice1},
+            choice_2 = #{choice2},
+            choice_3 = #{choice3},
+            choice_4 = #{choice4},
+            answer = #{answer},
+            comment_count = #{commentCount}
+        WHERE user_problem_id = #{userProblemId}
+    </update>
+    
+    <!-- 문제 삭제 -->
+    <delete id="deleteUserProblemById">
+        DELETE FROM user_problem
+        WHERE user_problem_id = #{userProblemId}
+    </delete>
+    
+
+
+
+</mapper>
+
