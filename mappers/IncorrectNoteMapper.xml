@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.codeboy.mvc.model.dao.IncorrectNoteDao">
+    <select id="selectIncorrectProblems" resultType="IncorrectNoteResponse" parameterType="long" >
+        (SELECT
+            inote.incorrect_note_id,
+            p.problem_description,
+            p.choice_1 AS choice1,
+            p.choice_2 AS choice2,
+            p.choice_3 AS choice3,
+            p.choice_4 AS choice4,
+            p.answer,
+            p.category
+            FROM incorrect_note inote
+            JOIN problem p ON inote.problem_id = p.problem_id
+            WHERE inote.member_id = #{memberId}
+            AND inote.is_user_problem = 0
+        ) UNION ALL
+        (SELECT
+            inote.incorrect_note_id,
+            u.problem_description,
+            u.choice_1 AS choice1,
+            u.choice_2 AS choice2,
+            u.choice_3 AS choice3,
+            u.choice_4 AS choice4,
+            u.answer,
+            u.category
+            FROM incorrect_note inote
+            JOIN user_problem u ON inote.user_problem_id = u.user_problem_id
+            WHERE inote.member_id = #{memberId}
+            AND inote.is_user_problem = 1
+        )
+    </select>
+    <select id="existsProblemById" parameterType="long" resultType="boolean">
+        SELECT COUNT(1) > 0
+        FROM problem
+        WHERE problem_id = #{problemId}
+    </select>
+
+    <select id="existsUserProblemById" parameterType="long" resultType="boolean">
+        SELECT COUNT(1) > 0
+        FROM user_problem
+        WHERE user_problem_id = #{userProblemId}
+    </select>
+    <select id="existsIncorrectNoteById" parameterType="long" resultType="boolean">
+        SELECT COUNT(1) > 0
+        FROM incorrect_note
+        WHERE incorrect_note_id = #{incorrectNoteId}
+    </select>
+
+
+
+    <delete id="deleteIncorrectProblem"  parameterType="map">
+        DELETE FROM incorrect_note
+        WHERE incorrect_note_id = #{incorrectNoteId}
+    </delete>
+
+
+    <insert id="insertIncorrectProblem" useGeneratedKeys="true"  keyProperty="incorrectNoteId" parameterType="map">
+        INSERT INTO incorrect_note (member_id, problem_id, user_problem_id, is_user_problem)
+        VALUES (#{memberId}, #{problemId}, #{userProblemId}, #{isUserProblem})
+    </insert>
+
+</mapper>

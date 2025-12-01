@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.codeboy.mvc.model.dao.MemberDao">
+    <select id="selectMemberById" parameterType="long" resultType="Member">
+        SELECT *
+        FROM member
+        WHERE member_id = #{memberId}
+
+    </select>
+    <update id="deactivateMemberById" parameterType="long">
+        UPDATE member
+        SET is_active = 0
+        WHERE member_id = #{memberId}
+
+    </update>
+    <update id="updateMemberById">
+        UPDATE member
+        <set>
+            <if test="update.nickname != null">
+         nickname = #{update.nickname}
+            </if>
+            <if test="update.id != null">
+                id = #{update.id}
+            </if>
+            <if test="update.email != null">
+                email = #{update.email}
+            </if>
+        </set>
+        WHERE member_id = #{memberId}
+    </update>
+
+    <select id="existsId" parameterType="String" resultType="boolean">
+        SELECT CASE WHEN COUNT(1) > 0 THEN TRUE ELSE FALSE END
+        FROM member
+        WHERE id = #{id}
+    </select>
+
+    <select id="existsNickname" parameterType="String" resultType="boolean">
+        SELECT CASE WHEN COUNT(1) > 0 THEN TRUE ELSE FALSE END
+        FROM member
+        WHERE nickname = #{nickname}
+    </select>
+
+    <select id="existsEmail" parameterType="String" resultType="boolean">
+        SELECT CASE WHEN COUNT(1) > 0 THEN TRUE ELSE FALSE END
+        FROM member
+        WHERE email = #{email}
+    </select>
+
+    <select id="isMemberActive" parameterType="long" resultType="boolean">
+        SELECT is_active
+        FROM member
+        WHERE member_id = #{memberId}
+    </select>
+
+    <insert id="insertMember" parameterType="Member">
+        INSERT INTO member (id, password, nickname, email, is_active, signup_date)
+        VALUES (#{id}, #{password}, #{nickname}, #{email}, 1, NOW());
+    </insert>
+    
+       <!-- 로그인 - ID와 password로 회원 조회 -->
+    <select id="selectMemberByIdAndPassword" resultType="Member">
+        SELECT 
+            member_id AS memberId,
+            ID AS id,
+            password,
+            nickname,
+            email,
+            signup_date AS signupDate,
+            is_active AS isActive,
+            deleted_date AS deletedDate
+        FROM member
+        WHERE ID = #{id} AND password = #{password} AND is_active = 1
+    </select>
+</mapper>
