@@ -14,7 +14,7 @@
 ID: 2
 password:1234로 실행
 
-자세한 테스트 실행 순서는 testScenario.md 참고
+자세한 테스트 실행 순서는 [testScenario.md](https://github.com/BangBangCodeBoy/mcpAPITester/blob/main/testScenario.md) 참고
 
 ## ✅ 성공한 테스트
 
