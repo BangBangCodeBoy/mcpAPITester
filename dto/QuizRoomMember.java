@@ -15,7 +15,7 @@ public class QuizRoomMember {
     private Long quizRoomMemberId;
     private Long memberId;
     private Long roomId;
-    private Boolean isHost;
+    private Boolean ㅊ;
 	public Long getQuizRoomMemberId() {
 		return quizRoomMemberId;
 	}

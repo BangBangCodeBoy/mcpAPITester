@@ -1,0 +1,32 @@
+🚀 테스트 시나리오 실행
+================================================================================
+
+[1] 🗑️  모든 테이블의 데이터 삭제
+================================================================================
+❌ root 연결 실패: Access denied for user 'root'@'localhost' (using password: YES)
+❌ root 연결 실패: Access denied for user 'root'@'localhost' (using password: NO)
+
+❌ DB 연결 실패 - 데이터 삭제를 건너뜁니다.
+
+
+[2] 👤 회원가입 + 점수 등록
+================================================================================
+
+[2] ❌ 회원가입
+   POST /api/member
+   상태: 500
+   메시지: 
+### Error updating database.  Cause: com.mysql.cj.jdbc.exceptions.MysqlDataTruncation: Data truncation: Data too long for column 'email' at row 1
+### The error may exist in file [/Users/junhyeong8795/관통/Backend/codeBoy_backend/target/classes/mappers/MemberMapper.xml]
+### The error may involve com.codeboy.mvc.model.dao.MemberDao.insertMember-Inline
+### The error occurred while setting parameters
+### SQL: INSERT INTO member (ID, password, nickname, email, is_active, signup_date)         VALUES (?, ?, ?, ?, 1, NOW());
+### Cause: com.mysql.cj.jdbc.exceptions.MysqlDataTruncation: Data truncation: Data too long for column 'email' at row 1
+; Data truncation: Data too long for column 'email' at row 1
+   에러: {
+  "timestamp": "2025-12-02T02:39:21.471+00:00",
+  "status": 500,
+  "error": "Internal Server Error",
+  "trace": "org.springframework.dao.DataIntegrityViolationException: \n### Error updating databas...
+
+   ❌ 회원가입 실패! 테스트를 중단합니다.

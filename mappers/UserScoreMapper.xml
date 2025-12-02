@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.codeboy.mvc.model.dao.UserScoreDao">
+
+    <insert id="insertScore">
+        INSERT INTO user_score(member_id, score)
+        VALUES(#{memberId}, #{score})
+    </insert>
+
+    <select id="selectAllUserScores" resultType="UserScore">
+        SELECT member_id, score FROM user_score
+    </select>
+
+    <select id="selectOneUserScore" resultType="UserScore">
+        SELECT member_id, score
+        FROM user_score
+        WHERE member_id = #{memberId}
+    </select>
+
+    <update id="updateUserScore">
+        UPDATE user_score
+        SET score = #{score}
+        WHERE member_id = #{memberId}
+    </update>
+
+</mapper>

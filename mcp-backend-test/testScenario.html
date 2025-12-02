@@ -1,0 +1,1345 @@
+<!DOCTYPE html>
+<html lang="ko">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>API 테스트 시나리오</title>
+        <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+        <style>
+            body {
+                font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+                max-width: 1200px;
+                margin: 0 auto;
+                padding: 20px;
+                background-color: #f5f5f5;
+            }
+            .container {
+                background: white;
+                padding: 30px;
+                border-radius: 10px;
+                box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            }
+            h1 {
+                color: #333;
+                border-bottom: 3px solid #4caf50;
+                padding-bottom: 10px;
+            }
+            .test-section {
+                margin: 20px 0;
+                padding: 15px;
+                background: #f9f9f9;
+                border-left: 4px solid #2196f3;
+                border-radius: 5px;
+            }
+            .test-section h2 {
+                margin-top: 0;
+                color: #2196f3;
+            }
+            button {
+                background-color: #4caf50;
+                color: white;
+                padding: 12px 24px;
+                border: none;
+                border-radius: 5px;
+                cursor: pointer;
+                font-size: 16px;
+                margin: 10px 5px;
+            }
+            button:hover {
+                background-color: #45a049;
+            }
+            button:disabled {
+                background-color: #cccccc;
+                cursor: not-allowed;
+            }
+            .status {
+                display: inline-block;
+                padding: 5px 10px;
+                border-radius: 3px;
+                font-weight: bold;
+                margin-left: 10px;
+            }
+            .status.success {
+                background-color: #4caf50;
+                color: white;
+            }
+            .status.error {
+                background-color: #f44336;
+                color: white;
+            }
+            .status.pending {
+                background-color: #ff9800;
+                color: white;
+            }
+            #console-output {
+                background: #1e1e1e;
+                color: #d4d4d4;
+                padding: 20px;
+                border-radius: 5px;
+                font-family: "Courier New", monospace;
+                font-size: 12px;
+                max-height: 500px;
+                overflow-y: auto;
+                margin-top: 20px;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+            }
+            .log-item {
+                margin: 5px 0;
+                padding: 5px;
+                border-left: 3px solid #4caf50;
+                padding-left: 10px;
+            }
+            .log-item.error {
+                border-left-color: #f44336;
+            }
+            .log-item.info {
+                border-left-color: #2196f3;
+            }
+            .login-section {
+                background: #e3f2fd;
+                border-left: 4px solid #2196f3;
+            }
+            input[type="text"],
+            input[type="password"] {
+                padding: 10px;
+                margin: 5px;
+                border: 1px solid #ddd;
+                border-radius: 5px;
+                font-size: 14px;
+                width: 200px;
+            }
+            .login-info {
+                margin-top: 10px;
+                padding: 10px;
+                background: #fff3cd;
+                border-radius: 5px;
+                font-size: 14px;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h1>🚀 API 테스트 시나리오</h1>
+            <p>브라우저 콘솔(F12)을 열어서 상세한 JSON 응답을 확인하세요.</p>
+
+            <div class="test-section login-section">
+                <h2>🔐 로그인</h2>
+                <div>
+                    <input
+                        type="text"
+                        id="loginId"
+                        placeholder="아이디"
+                        value=""
+                    />
+                    <input
+                        type="password"
+                        id="loginPassword"
+                        placeholder="비밀번호"
+                        value=""
+                    />
+                    <button onclick="manualLogin()">로그인</button>
+                    <button onclick="logout()">로그아웃</button>
+                </div>
+                <div id="loginStatus" class="login-info">
+                    로그인하지 않았습니다.
+                </div>
+            </div>
+
+            <div class="test-section">
+                <h2>테스트 제어</h2>
+                <button id="startTest" onclick="startTest()">
+                    전체 테스트 시작
+                </button>
+                <button id="stopTest" onclick="stopTest()" disabled>
+                    테스트 중지
+                </button>
+                <button onclick="clearConsole()">콘솔 지우기</button>
+                <button onclick="checkSession()">세션 확인</button>
+                <button onclick="checkCookies()">쿠키 확인</button>
+            </div>
+
+            <div class="test-section">
+                <h2>테스트 진행 상황</h2>
+                <div id="testStatus">대기 중...</div>
+            </div>
+
+            <div class="test-section">
+                <h2>콘솔 출력</h2>
+                <div id="console-output"></div>
+            </div>
+        </div>
+
+        <script>
+            // Vite 프록시를 사용하므로 상대 경로로 변경
+            // Vite 개발 서버가 /api로 시작하는 요청을 http://localhost:8080으로 프록시
+            // Vite 프록시 사용: /api로 시작하는 요청이 http://localhost:8080으로 프록시됨
+            const BACKEND_BASE_URL = "";
+            let testResults = [];
+            let isTestRunning = false;
+            let loggedInMemberId = null;
+            let userProblemSetId = null;
+            let userProblemIds = [];
+            let commentIds = [];
+            let quizRoomId = null;
+            let incorrectNoteId = null;
+            let signupId = "";
+            let signupPassword = "";
+
+            // axios 인스턴스 생성 (withCredentials 강제 설정)
+            const axiosInstance = axios.create({
+                withCredentials: true,
+                headers: {
+                    "Content-Type": "application/json",
+                },
+            });
+
+            // axios 기본 설정도 함께 설정
+            axios.defaults.withCredentials = true;
+
+            // 요청 인터셉터: 모든 요청에 쿠키 포함 확인
+            axiosInstance.interceptors.request.use(
+                (config) => {
+                    config.withCredentials = true;
+                    // 쿠키가 있는지 확인
+                    const cookies = document.cookie;
+                    if (cookies) {
+                        console.log("요청 전 쿠키:", cookies);
+                    }
+                    return config;
+                },
+                (error) => {
+                    return Promise.reject(error);
+                }
+            );
+
+            // 응답 인터셉터: Set-Cookie 헤더 확인 및 쿠키 저장 강제
+            axiosInstance.interceptors.response.use(
+                (response) => {
+                    // Set-Cookie 헤더 확인
+                    const setCookie = response.headers["set-cookie"];
+                    const setCookieHeader =
+                        response.headers["set-cookie"] ||
+                        response.headers["Set-Cookie"];
+
+                    if (setCookie || setCookieHeader) {
+                        const cookieValue = setCookie || setCookieHeader;
+                        console.log("서버에서 쿠키 설정:", cookieValue);
+                        log(
+                            `서버에서 쿠키 설정됨: ${JSON.stringify(
+                                cookieValue
+                            )}`,
+                            "info"
+                        );
+
+                        // 쿠키를 수동으로 파싱하여 저장 시도
+                        if (Array.isArray(cookieValue)) {
+                            cookieValue.forEach((cookie) => {
+                                const cookieParts = cookie
+                                    .split(";")[0]
+                                    .split("=");
+                                if (cookieParts.length === 2) {
+                                    const cookieName = cookieParts[0].trim();
+                                    const cookieVal = cookieParts[1].trim();
+                                    // document.cookie에 직접 설정 시도
+                                    document.cookie = `${cookieName}=${cookieVal}; path=/; SameSite=Lax`;
+                                    log(
+                                        `쿠키 수동 저장 시도: ${cookieName}=${cookieVal}`,
+                                        "info"
+                                    );
+                                }
+                            });
+                        } else if (typeof cookieValue === "string") {
+                            const cookieParts = cookieValue
+                                .split(";")[0]
+                                .split("=");
+                            if (cookieParts.length === 2) {
+                                const cookieName = cookieParts[0].trim();
+                                const cookieVal = cookieParts[1].trim();
+                                document.cookie = `${cookieName}=${cookieVal}; path=/; SameSite=Lax`;
+                                log(
+                                    `쿠키 수동 저장 시도: ${cookieName}=${cookieVal}`,
+                                    "info"
+                                );
+                            }
+                        }
+
+                        // 저장 후 쿠키 확인
+                        setTimeout(() => {
+                            const savedCookies = document.cookie;
+                            log(
+                                `저장 후 쿠키 확인: ${
+                                    savedCookies || "(없음)"
+                                }`,
+                                "info"
+                            );
+                            console.log("저장 후 쿠키:", savedCookies);
+                        }, 100);
+                    } else {
+                        log("⚠️ Set-Cookie 헤더가 응답에 없습니다.", "error");
+                        console.warn(
+                            "Set-Cookie 헤더 없음. 응답 헤더:",
+                            response.headers
+                        );
+                    }
+                    return response;
+                },
+                (error) => {
+                    return Promise.reject(error);
+                }
+            );
+
+            // 쿠키 확인 함수 (상세 정보 포함)
+            function checkCookies() {
+                const cookies = document.cookie;
+                log(`현재 쿠키: ${cookies || "(없음)"}`, "info");
+                console.log("현재 쿠키:", cookies);
+
+                // 쿠키가 없으면 원인 분석
+                if (!cookies) {
+                    log("⚠️ 쿠키가 없습니다. 가능한 원인:", "error");
+                    log("  1. 서버가 Set-Cookie 헤더를 보내지 않음", "error");
+                    log(
+                        "  2. CORS 설정 문제 (Access-Control-Allow-Credentials)",
+                        "error"
+                    );
+                    log(
+                        "  3. 브라우저 쿠키 정책 (SameSite, Secure 등)",
+                        "error"
+                    );
+                    log("  4. 도메인/포트 불일치", "error");
+                    log(`  5. 현재 URL: ${window.location.href}`, "error");
+                    log(
+                        `  6. Vite 프록시 사용: /api 요청이 http://localhost:8080으로 프록시됨`,
+                        "error"
+                    );
+                } else {
+                    // 쿠키 파싱
+                    const cookieArray = cookies.split(";").map((c) => c.trim());
+                    log(
+                        `총 ${cookieArray.length}개의 쿠키가 있습니다:`,
+                        "info"
+                    );
+                    cookieArray.forEach((cookie, index) => {
+                        const [name, value] = cookie.split("=");
+                        log(
+                            `  ${index + 1}. ${name} = ${value || "(값 없음)"}`,
+                            "info"
+                        );
+                    });
+                }
+
+                return cookies;
+            }
+
+            // 세션 확인 함수
+            async function checkSession() {
+                try {
+                    log("\n=== 세션 확인 ===", "info");
+                    const cookies = document.cookie;
+                    log(`현재 쿠키: ${cookies || "(없음)"}`, "info");
+
+                    const response = await axiosInstance.get(
+                        `/api/user-problem-sets/me`
+                    );
+                    log("✅ 세션이 유효합니다.", "info");
+                    console.log("세션 확인 응답:", response.data);
+                    return true;
+                } catch (error) {
+                    if (
+                        error.response?.status === 401 ||
+                        error.response?.status === 404
+                    ) {
+                        log(
+                            "❌ 세션이 유효하지 않습니다. (로그인이 필요합니다)",
+                            "error"
+                        );
+                        console.error("세션 확인 실패:", error.response?.data);
+                        return false;
+                    }
+                    log(`세션 확인 중 오류: ${error.message}`, "error");
+                    return false;
+                }
+            }
+
+            // 로그인 상태 확인
+            function updateLoginStatus() {
+                const loginStatus = document.getElementById("loginStatus");
+                if (loggedInMemberId) {
+                    loginStatus.innerHTML = `✅ 로그인됨 - 회원 ID: ${loggedInMemberId} (아이디: ${
+                        signupId || "N/A"
+                    })`;
+                    loginStatus.style.background = "#d4edda";
+                } else {
+                    loginStatus.innerHTML = "❌ 로그인하지 않았습니다.";
+                    loginStatus.style.background = "#fff3cd";
+                }
+            }
+
+            // 수동 로그인
+            async function manualLogin() {
+                const id = document.getElementById("loginId").value;
+                const password = document.getElementById("loginPassword").value;
+
+                if (!id || !password) {
+                    alert("아이디와 비밀번호를 입력하세요.");
+                    return;
+                }
+
+                try {
+                    log(`\n=== 수동 로그인 시도 ===`, "info");
+                    log(`아이디: ${id}`, "info");
+
+                    // 로그인 전 쿠키 확인
+                    log("로그인 전 쿠키:", "info");
+                    checkCookies();
+
+                    // 로그인 요청: id와 password를 보냄 (서버가 member_id를 찾아서 세션에 저장)
+                    // Vite 프록시를 통해 /api/auth/login이 http://localhost:8080/api/auth/login으로 전달됨
+                    const response = await axiosInstance.post(
+                        `/api/auth/login`,
+                        {
+                            id: id, // 사용자 아이디 (예: "2")
+                            password: password, // 비밀번호 (예: "1234")
+                        }
+                    );
+
+                    // 서버 응답 확인
+                    console.log("로그인 응답 전체:", response.data);
+                    console.log("응답 헤더:", response.headers);
+                    log("서버 응답 데이터:", "info");
+                    log(JSON.stringify(response.data, null, 2), "info");
+
+                    // 서버가 보낸 데이터 확인: id, password, memberId
+                    const responseData = response.data?.data;
+                    if (responseData) {
+                        log(`서버 응답에서 받은 데이터:`, "info");
+                        log(`  - id: ${responseData.id || "(없음)"}`, "info");
+                        log(
+                            `  - password: ${
+                                responseData.password ? "***" : "(없음)"
+                            }`,
+                            "info"
+                        );
+                        log(
+                            `  - memberId: ${
+                                responseData.memberId || "(없음)"
+                            }`,
+                            "info"
+                        );
+                        log(
+                            `  - nickname: ${
+                                responseData.nickname || "(없음)"
+                            }`,
+                            "info"
+                        );
+                    }
+
+                    // 로그인 후 쿠키 확인 (약간의 지연 후)
+                    setTimeout(() => {
+                        log("로그인 후 쿠키 확인 (100ms 후):", "info");
+                        checkCookies();
+                    }, 100);
+
+                    if (responseData?.memberId) {
+                        loggedInMemberId = responseData.memberId;
+                        signupId = responseData.id || id; // 서버에서 보낸 id 사용
+                        signupPassword = password; // password는 보안상 저장하지 않지만 변수는 유지
+
+                        log(
+                            `✅ 로그인 성공! 회원 ID: ${loggedInMemberId} (DB의 member_id)`,
+                            "info"
+                        );
+                        log(
+                            `서버 응답: id=${signupId}, memberId=${loggedInMemberId}`,
+                            "info"
+                        );
+                        log(
+                            `서버가 세션에 memberId=${loggedInMemberId} 저장 완료 (서버 측에서 처리)`,
+                            "info"
+                        );
+
+                        // 세션 확인: 서버가 세션에 memberId를 제대로 저장했는지 확인
+                        log("\n=== 세션 저장 확인 ===", "info");
+                        log(
+                            `서버가 응답으로 보낸 memberId: ${loggedInMemberId}`,
+                            "info"
+                        );
+                        log(
+                            `이 memberId가 서버 세션에 저장되었는지 확인 중...`,
+                            "info"
+                        );
+
+                        const sessionCheckResult = await checkSession();
+                        if (sessionCheckResult) {
+                            log(
+                                `✅ 세션에 memberId=${loggedInMemberId}가 정상적으로 저장되어 있습니다.`,
+                                "info"
+                            );
+                            log(
+                                `서버가 세션에서 memberId를 읽어서 인증에 사용할 수 있습니다.`,
+                                "info"
+                            );
+                        } else {
+                            log(
+                                `⚠️ 세션 확인 실패. 서버가 세션에 memberId를 저장하지 않았을 수 있습니다.`,
+                                "error"
+                            );
+                            log(
+                                `서버 응답의 memberId=${loggedInMemberId}는 받았지만, 세션 쿠키가 전송되지 않았을 수 있습니다.`,
+                                "error"
+                            );
+                        }
+
+                        updateLoginStatus();
+                        alert("로그인 성공!");
+                    } else {
+                        throw new Error(
+                            "로그인 실패: memberId를 받지 못했습니다."
+                        );
+                    }
+                } catch (error) {
+                    log(
+                        `❌ 로그인 실패: ${
+                            error.response?.data?.message || error.message
+                        }`,
+                        "error"
+                    );
+                    console.error(
+                        "로그인 에러:",
+                        error.response?.data || error.message
+                    );
+                    console.error("에러 응답 헤더:", error.response?.headers);
+                    alert(
+                        "로그인 실패: " +
+                            (error.response?.data?.message || error.message)
+                    );
+                }
+            }
+
+            // 로그아웃
+            async function logout() {
+                try {
+                    await axiosInstance.post(`/api/auth/logout`, {});
+                    loggedInMemberId = null;
+                    signupId = "";
+                    signupPassword = "";
+                    log("로그아웃 완료", "info");
+                    updateLoginStatus();
+                    alert("로그아웃 완료!");
+                } catch (error) {
+                    log(`로그아웃 에러: ${error.message}`, "error");
+                }
+            }
+
+            function log(message, type = "info") {
+                const consoleOutput = document.getElementById("console-output");
+                const timestamp = new Date().toLocaleTimeString();
+                const logItem = document.createElement("div");
+                logItem.className = `log-item ${type}`;
+                logItem.textContent = `[${timestamp}] ${message}`;
+                consoleOutput.appendChild(logItem);
+                consoleOutput.scrollTop = consoleOutput.scrollHeight;
+
+                // 브라우저 콘솔에도 출력
+                if (type === "error") {
+                    console.error(message);
+                } else if (type === "info") {
+                    console.info(message);
+                } else {
+                    console.log(message);
+                }
+            }
+
+            function clearConsole() {
+                document.getElementById("console-output").innerHTML = "";
+                console.clear();
+            }
+
+            function updateStatus(message, status = "pending") {
+                const statusDiv = document.getElementById("testStatus");
+                statusDiv.innerHTML = `<span class="status ${status}">${message}</span>`;
+            }
+
+            async function testAPI(step, name, method, url, data = null) {
+                try {
+                    log(`\n[${step}] ${name} - ${method} ${url}`, "info");
+                    if (data) {
+                        log(
+                            `요청 데이터: ${JSON.stringify(data, null, 2)}`,
+                            "info"
+                        );
+                        console.log(`[${step}] ${name} - 요청 데이터:`, data);
+                    }
+
+                    // 쿠키 확인 (디버깅용)
+                    if (step === 3 || step === 4) {
+                        // 로그인 직후나 첫 번째 API 호출 시
+                        const cookies = document.cookie;
+                        log(`요청 전 쿠키: ${cookies || "(없음)"}`, "info");
+                        console.log(`[${step}] 요청 전 쿠키:`, cookies);
+                    }
+
+                    // axiosInstance 사용 (withCredentials 자동 포함)
+                    // Vite 프록시를 통해 /api로 시작하는 요청이 자동으로 http://localhost:8080으로 전달됨
+                    const config = {
+                        method: method.toLowerCase(),
+                        url: url, // url이 이미 /api로 시작하므로 그대로 사용
+                    };
+
+                    if (data) {
+                        config.data = data;
+                    }
+
+                    const response = await axiosInstance(config);
+
+                    // 응답 헤더에서 Set-Cookie 확인
+                    if (response.headers["set-cookie"]) {
+                        log(
+                            `서버에서 쿠키 설정: ${JSON.stringify(
+                                response.headers["set-cookie"]
+                            )}`,
+                            "info"
+                        );
+                        console.log(
+                            `[${step}] Set-Cookie 헤더:`,
+                            response.headers["set-cookie"]
+                        );
+                    }
+
+                    const result = {
+                        step,
+                        name,
+                        method,
+                        url,
+                        status: response.status,
+                        success:
+                            response.status >= 200 && response.status < 300,
+                        response: response.data,
+                    };
+
+                    log(`✅ 성공 (${response.status})`, "info");
+                    log(
+                        `응답: ${JSON.stringify(response.data, null, 2)}`,
+                        "info"
+                    );
+                    console.log(`[${step}] ${name} - 응답:`, response.data);
+
+                    testResults.push(result);
+                    return result;
+                } catch (error) {
+                    const result = {
+                        step,
+                        name,
+                        method,
+                        url,
+                        status: error.response?.status || null,
+                        success: false,
+                        error: error.response?.data || error.message,
+                    };
+
+                    log(`❌ 실패 (${result.status || "N/A"})`, "error");
+                    log(
+                        `에러: ${JSON.stringify(result.error, null, 2)}`,
+                        "error"
+                    );
+                    console.error(`[${step}] ${name} - 에러:`, result.error);
+
+                    testResults.push(result);
+                    return result;
+                }
+            }
+
+            // DB 초기화 (모든 테이블 데이터 삭제)
+            async function resetDatabase() {
+                log("\n=== [1] 모든 테이블의 데이터 삭제 ===", "info");
+                log("⚠️  브라우저에서는 직접 DB 접근이 불가능합니다.", "info");
+                log(
+                    "DB 초기화는 서버 측에서 수동으로 수행하거나, API 엔드포인트가 필요합니다.",
+                    "info"
+                );
+
+                // 만약 DB 초기화 API가 있다면 여기서 호출
+                // 예: await testAPI(1, 'DB 초기화', 'POST', '/api/admin/reset-database');
+
+                log(
+                    "DB 초기화는 스킵됩니다. (수동으로 DB를 초기화하거나 API 엔드포인트가 필요합니다)",
+                    "info"
+                );
+                return true;
+            }
+
+            async function startTest() {
+                if (isTestRunning) return;
+
+                // 이미 로그인되어 있으면 그대로 사용, 아니면 새로 회원가입 후 로그인
+                const useExistingLogin = loggedInMemberId !== null;
+
+                isTestRunning = true;
+                document.getElementById("startTest").disabled = true;
+                document.getElementById("stopTest").disabled = false;
+                testResults = [];
+                clearConsole();
+
+                log("🚀 테스트 시나리오 시작", "info");
+                updateStatus("테스트 진행 중...", "pending");
+
+                try {
+                    // 1. DB 초기화 (모든 테이블 데이터 삭제)
+                    await resetDatabase();
+
+                    if (!useExistingLogin) {
+                        // 2. 회원가입
+                        log("\n=== [2] 회원가입 + 점수 등록 ===", "info");
+                        const timeSuffix = Date.now().toString().slice(-6);
+                        signupId = `test${timeSuffix}`;
+                        signupPassword = "testpass123";
+
+                        const signupResult = await testAPI(
+                            2,
+                            "회원가입",
+                            "POST",
+                            "/api/member",
+                            {
+                                id: signupId,
+                                password: signupPassword,
+                                nickname: "테스트유저",
+                                email: `test${timeSuffix}@test.com`,
+                            }
+                        );
+
+                        if (!signupResult.success) {
+                            throw new Error("회원가입 실패");
+                        }
+
+                        // 3. 로그인
+                        log("\n=== [3] 로그인 ===", "info");
+                        log(
+                            `로그인 요청: id=${signupId}, password=${signupPassword}`,
+                            "info"
+                        );
+                        const loginResult = await testAPI(
+                            3,
+                            "로그인",
+                            "POST",
+                            "/api/auth/login",
+                            {
+                                id: signupId, // 사용자 아이디
+                                password: signupPassword, // 비밀번호
+                            }
+                        );
+
+                        // 서버 응답 확인
+                        const loginResponseData = loginResult.response?.data;
+                        if (loginResponseData) {
+                            log(`서버 응답에서 받은 데이터:`, "info");
+                            log(
+                                `  - id: ${loginResponseData.id || "(없음)"}`,
+                                "info"
+                            );
+                            log(
+                                `  - memberId: ${
+                                    loginResponseData.memberId || "(없음)"
+                                }`,
+                                "info"
+                            );
+                            log(
+                                `  - nickname: ${
+                                    loginResponseData.nickname || "(없음)"
+                                }`,
+                                "info"
+                            );
+                        }
+
+                        if (
+                            loginResult.success &&
+                            loginResponseData?.memberId
+                        ) {
+                            loggedInMemberId = loginResponseData.memberId;
+                            signupId = loginResponseData.id || signupId; // 서버에서 보낸 id 사용
+
+                            log(
+                                `✅ 로그인 성공! 회원 ID: ${loggedInMemberId} (DB의 member_id)`,
+                                "info"
+                            );
+                            log(
+                                `서버 응답: id=${signupId}, memberId=${loggedInMemberId}`,
+                                "info"
+                            );
+                            log(
+                                `서버가 세션에 memberId=${loggedInMemberId} 저장 완료 (서버 측에서 처리)`,
+                                "info"
+                            );
+
+                            // 세션 저장 확인
+                            log("\n=== 세션 저장 확인 ===", "info");
+                            const sessionCheckResult = await checkSession();
+                            if (sessionCheckResult) {
+                                log(
+                                    `✅ 세션에 memberId=${loggedInMemberId}가 정상적으로 저장되어 있습니다.`,
+                                    "info"
+                                );
+                            } else {
+                                log(
+                                    `⚠️ 세션 확인 실패. 서버가 세션에 memberId를 저장하지 않았을 수 있습니다.`,
+                                    "error"
+                                );
+                            }
+
+                            updateLoginStatus();
+                        } else {
+                            throw new Error("로그인 실패");
+                        }
+                    } else {
+                        log("\n=== 기존 로그인 세션 사용 ===", "info");
+                        log(
+                            `이미 로그인된 회원 ID: ${loggedInMemberId}`,
+                            "info"
+                        );
+                    }
+
+                    // 2-2. 점수 등록
+                    log("\n=== [2-2] 점수 등록 ===", "info");
+                    await testAPI(2, "점수 등록", "POST", "/api/scores", {
+                        score: 100,
+                    });
+
+                    // 4. 문제세트 전체조회
+                    log("\n=== [4] 문제세트 전체조회 ===", "info");
+                    await testAPI(
+                        4,
+                        "문제세트 전체조회",
+                        "GET",
+                        "/api/user-problem-sets"
+                    );
+
+                    // 5. 내 문제세트 조회
+                    log("\n=== [5] 내 문제세트 조회 ===", "info");
+                    const mySetResult = await testAPI(
+                        5,
+                        "내 문제세트 조회",
+                        "GET",
+                        "/api/user-problem-sets/me"
+                    );
+
+                    if (
+                        mySetResult.success &&
+                        mySetResult.response?.data?.userProblemSetId
+                    ) {
+                        userProblemSetId =
+                            mySetResult.response.data.userProblemSetId;
+                        log(`문제세트 ID: ${userProblemSetId}`, "info");
+                    } else {
+                        log("문제세트가 없어서 생성합니다.", "info");
+                        const createSetResult = await testAPI(
+                            5,
+                            "문제세트 생성",
+                            "POST",
+                            "/api/user-problem-sets"
+                        );
+                        if (createSetResult.success) {
+                            const recheckResult = await testAPI(
+                                5,
+                                "내 문제세트 재조회",
+                                "GET",
+                                "/api/user-problem-sets/me"
+                            );
+                            if (
+                                recheckResult.success &&
+                                recheckResult.response?.data?.userProblemSetId
+                            ) {
+                                userProblemSetId =
+                                    recheckResult.response.data
+                                        .userProblemSetId;
+                                log(
+                                    `생성된 문제세트 ID: ${userProblemSetId}`,
+                                    "info"
+                                );
+                            }
+                        }
+                    }
+
+                    // 6. 유저제작문제 3개 추가
+                    log("\n=== [6] 유저제작문제 3개 추가 ===", "info");
+                    if (userProblemSetId) {
+                        await testAPI(
+                            6,
+                            "문제 일괄 등록",
+                            "POST",
+                            `/api/user-problems/sets/${userProblemSetId}`,
+                            [
+                                {
+                                    problemDescription:
+                                        "시나리오 테스트 문제 1",
+                                    category: "INFOENGINEERING",
+                                    choice1: "선택지1",
+                                    choice2: "선택지2",
+                                    choice3: "선택지3",
+                                    choice4: "선택지4",
+                                    answer: "1",
+                                },
+                                {
+                                    problemDescription:
+                                        "시나리오 테스트 문제 2",
+                                    category: "INFOENGINEERING",
+                                    choice1: "선택지A",
+                                    choice2: "선택지B",
+                                    choice3: "선택지C",
+                                    choice4: "선택지D",
+                                    answer: "2",
+                                },
+                                {
+                                    problemDescription:
+                                        "시나리오 테스트 문제 3",
+                                    category: "SQLD",
+                                    choice1: "옵션1",
+                                    choice2: "옵션2",
+                                    choice3: "옵션3",
+                                    choice4: "옵션4",
+                                    answer: "3",
+                                },
+                            ]
+                        );
+
+                        const getProblemsResult = await testAPI(
+                            6,
+                            "문제 목록 조회",
+                            "GET",
+                            `/api/user-problems/sets/${userProblemSetId}`
+                        );
+                        if (
+                            getProblemsResult.success &&
+                            getProblemsResult.response?.data
+                        ) {
+                            userProblemIds = getProblemsResult.response.data
+                                .map((p) => p.userProblemId)
+                                .filter((id) => id !== undefined);
+                            log(
+                                `등록된 문제 ID: ${userProblemIds.join(", ")}`,
+                                "info"
+                            );
+                        }
+                    }
+
+                    // 7. 유저제작문제 수정
+                    log("\n=== [7] 유저제작문제 수정 ===", "info");
+                    if (userProblemIds.length > 0) {
+                        await testAPI(
+                            7,
+                            "문제 수정",
+                            "PUT",
+                            `/api/user-problems/${userProblemIds[0]}`,
+                            {
+                                problemDescription: "수정된 문제입니다!",
+                                category: "INFOENGINEERING",
+                                choice1: "수정1",
+                                choice2: "수정2",
+                                choice3: "수정3",
+                                choice4: "수정4",
+                                answer: "2",
+                            }
+                        );
+                    }
+
+                    // 8. 댓글 조회
+                    log("\n=== [8] 댓글 조회 ===", "info");
+                    if (userProblemSetId) {
+                        const getCommentsResult = await testAPI(
+                            8,
+                            "댓글 조회",
+                            "GET",
+                            `/api/comments/${userProblemSetId}`
+                        );
+                        if (
+                            getCommentsResult.success &&
+                            getCommentsResult.response?.data
+                        ) {
+                            commentIds = getCommentsResult.response.data
+                                .map((c) => c.commentId)
+                                .filter((id) => id !== undefined);
+                        }
+                    }
+
+                    // 9. 댓글 3개 작성
+                    log("\n=== [9] 댓글 3개 작성 ===", "info");
+                    if (userProblemSetId) {
+                        for (let i = 1; i <= 3; i++) {
+                            await testAPI(
+                                9,
+                                `댓글 작성 ${i}`,
+                                "POST",
+                                `/api/comments/${userProblemSetId}`,
+                                {
+                                    content: `시나리오 테스트 댓글 ${i}입니다.`,
+                                }
+                            );
+                        }
+
+                        const recheckComments = await testAPI(
+                            9,
+                            "댓글 재조회",
+                            "GET",
+                            `/api/comments/${userProblemSetId}`
+                        );
+                        if (
+                            recheckComments.success &&
+                            recheckComments.response?.data
+                        ) {
+                            commentIds = recheckComments.response.data
+                                .map((c) => c.commentId)
+                                .filter((id) => id !== undefined);
+                        }
+                    }
+
+                    // 10. 댓글 수정
+                    log("\n=== [10] 댓글 수정 ===", "info");
+                    if (userProblemSetId && commentIds.length > 0) {
+                        await testAPI(
+                            10,
+                            "댓글 수정",
+                            "PATCH",
+                            `/api/comments/${userProblemSetId}/${commentIds[0]}`,
+                            {
+                                content: "수정된 댓글 내용입니다!",
+                            }
+                        );
+                    }
+
+                    // 11. 댓글 삭제
+                    log("\n=== [11] 댓글 삭제 ===", "info");
+                    if (userProblemSetId && commentIds.length > 1) {
+                        await testAPI(
+                            11,
+                            "댓글 삭제",
+                            "DELETE",
+                            `/api/comments/${userProblemSetId}/${commentIds[1]}`
+                        );
+                    }
+
+                    // 13. 모든 회원들의 점수 조회
+                    log("\n=== [13] 모든 회원들의 점수 조회 ===", "info");
+                    await testAPI(13, "전체 점수 조회", "GET", "/api/scores");
+
+                    // 14. 특정 회원 점수 조회
+                    log("\n=== [14] 특정 회원 점수 조회 ===", "info");
+                    if (loggedInMemberId) {
+                        await testAPI(
+                            14,
+                            "특정 회원 점수 조회",
+                            "GET",
+                            `/api/scores/${loggedInMemberId}`
+                        );
+                    }
+
+                    // 15. 점수 수정
+                    log("\n=== [15] 점수 수정 ===", "info");
+                    await testAPI(15, "점수 수정", "PUT", "/api/scores", {
+                        score: 200,
+                    });
+
+                    // 16. 문제 전체 조회 (INFOENGINEERING)
+                    log(
+                        "\n=== [16] 문제 전체 조회 (INFOENGINEERING) ===",
+                        "info"
+                    );
+                    await testAPI(
+                        16,
+                        "문제 조회",
+                        "GET",
+                        "/api/problem?limit=4&category=INFOENGINEERING"
+                    );
+
+                    // 17. 문제 전체 조회 (SQLD)
+                    log("\n=== [17] 문제 전체 조회 (SQLD) ===", "info");
+                    await testAPI(
+                        17,
+                        "문제 조회 (SQLD)",
+                        "GET",
+                        "/api/problem?limit=4&category=SQLD"
+                    );
+
+                    // 18. 오답노트 추가 및 조회
+                    log("\n=== [18] 오답노트 추가 및 조회 ===", "info");
+                    const addNoteResult1 = await testAPI(
+                        18,
+                        "오답노트 추가 (기본 문제)",
+                        "POST",
+                        "/api/incorrect-note",
+                        {
+                            problemId: 1,
+                            userProblemId: null,
+                            isUserProblem: false,
+                        }
+                    );
+                    if (
+                        addNoteResult1.success &&
+                        addNoteResult1.response?.data
+                    ) {
+                        incorrectNoteId = addNoteResult1.response.data;
+                    }
+
+                    if (userProblemIds.length > 0) {
+                        await testAPI(
+                            18,
+                            "오답노트 추가 (유저제작문제)",
+                            "POST",
+                            "/api/incorrect-note",
+                            {
+                                problemId: null,
+                                userProblemId: userProblemIds[0],
+                                isUserProblem: true,
+                            }
+                        );
+                    }
+
+                    await testAPI(
+                        18,
+                        "오답노트 조회",
+                        "GET",
+                        "/api/incorrect-note"
+                    );
+
+                    // 19. 오답노트 삭제
+                    log("\n=== [19] 오답노트 삭제 ===", "info");
+                    if (incorrectNoteId) {
+                        await testAPI(
+                            19,
+                            "오답노트 삭제",
+                            "DELETE",
+                            `/api/incorrect-note/${incorrectNoteId}`
+                        );
+                    }
+
+                    // 20. 퀴즈방 목록 조회
+                    log("\n=== [20] 퀴즈방 목록 조회 ===", "info");
+                    await testAPI(
+                        20,
+                        "퀴즈방 목록 조회",
+                        "GET",
+                        "/api/quiz-room"
+                    );
+
+                    // 21. 퀴즈방 멤버 조회
+                    log("\n=== [21] 퀴즈방 멤버 조회 ===", "info");
+                    const roomListResult = await testAPI(
+                        21,
+                        "퀴즈방 목록 조회",
+                        "GET",
+                        "/api/quiz-room"
+                    );
+                    if (
+                        roomListResult.success &&
+                        roomListResult.response?.data?.length > 0
+                    ) {
+                        const firstRoomId =
+                            roomListResult.response.data[0].roomId;
+                        await testAPI(
+                            21,
+                            "퀴즈방 멤버 조회",
+                            "GET",
+                            `/api/quiz-room/${firstRoomId}/member`
+                        );
+                    }
+
+                    // 22. 퀴즈방 생성
+                    log("\n=== [22] 퀴즈방 생성 ===", "info");
+                    if (loggedInMemberId) {
+                        const createRoomResult = await testAPI(
+                            22,
+                            "퀴즈방 생성",
+                            "POST",
+                            `/api/quiz-room/create/${loggedInMemberId}`
+                        );
+                        if (
+                            createRoomResult.success &&
+                            createRoomResult.response?.data
+                        ) {
+                            quizRoomId = createRoomResult.response.data;
+                            log(`생성된 퀴즈방 ID: ${quizRoomId}`, "info");
+                        }
+                    }
+
+                    // 24. 퀴즈방 삭제
+                    log("\n=== [24] 퀴즈방 삭제 ===", "info");
+                    if (quizRoomId) {
+                        await testAPI(
+                            24,
+                            "퀴즈방 삭제",
+                            "DELETE",
+                            `/api/quiz-room/${quizRoomId}`
+                        );
+                    }
+
+                    // 결과 요약
+                    log("\n=== 테스트 결과 요약 ===", "info");
+                    const total = testResults.length;
+                    const success = testResults.filter((r) => r.success).length;
+                    const failed = testResults.filter((r) => !r.success).length;
+                    const successRate = ((success / total) * 100).toFixed(1);
+
+                    log(`\n총 테스트: ${total}개`, "info");
+                    log(`✅ 성공: ${success}개`, "info");
+                    log(`❌ 실패: ${failed}개`, "info");
+                    log(`성공률: ${successRate}%`, "info");
+
+                    log("\n✅ 성공한 테스트:", "info");
+                    testResults
+                        .filter((r) => r.success)
+                        .forEach((r) => {
+                            log(
+                                `  ✅ [${r.step}] ${r.name} - ${r.method} ${r.url} (${r.status})`,
+                                "info"
+                            );
+                        });
+
+                    log("\n❌ 실패한 테스트:", "info");
+                    const failedResults = testResults.filter((r) => !r.success);
+                    if (failedResults.length === 0) {
+                        log("  없음 - 모든 테스트가 성공했습니다! 🎉", "info");
+                    } else {
+                        failedResults.forEach((r) => {
+                            log(
+                                `  ❌ [${r.step}] ${r.name} - ${r.method} ${
+                                    r.url
+                                } (${r.status || "N/A"})`,
+                                "error"
+                            );
+                        });
+                    }
+
+                    // 결과를 파일로 다운로드
+                    downloadResults();
+
+                    updateStatus(
+                        `테스트 완료! 성공률: ${successRate}%`,
+                        "success"
+                    );
+                } catch (error) {
+                    log(`테스트 중 오류 발생: ${error.message}`, "error");
+                    updateStatus("테스트 실패", "error");
+                } finally {
+                    isTestRunning = false;
+                    document.getElementById("startTest").disabled = false;
+                    document.getElementById("stopTest").disabled = true;
+                }
+            }
+
+            function stopTest() {
+                isTestRunning = false;
+                document.getElementById("startTest").disabled = false;
+                document.getElementById("stopTest").disabled = true;
+                updateStatus("테스트 중지됨", "pending");
+                log("테스트가 중지되었습니다.", "info");
+            }
+
+            function downloadResults() {
+                const now = new Date();
+                const year = now.getFullYear();
+                const month = String(now.getMonth() + 1).padStart(2, "0");
+                const day = String(now.getDate()).padStart(2, "0");
+                const hours = String(now.getHours()).padStart(2, "0");
+                const minutes = String(now.getMinutes()).padStart(2, "0");
+                const timestamp = `${year}${month}${day}${hours}${minutes}`;
+                const filename = `testResult${timestamp}.md`;
+
+                let report = "# 테스트 시나리오 결과 보고서\n\n";
+                report += `**테스트 일시**: ${year}-${month}-${day} ${hours}:${minutes}\n\n`;
+
+                const total = testResults.length;
+                const success = testResults.filter((r) => r.success).length;
+                const failed = testResults.filter((r) => !r.success).length;
+                const successRate = ((success / total) * 100).toFixed(1);
+
+                report += `**총 테스트**: ${total}개\n`;
+                report += `**✅ 성공**: ${success}개\n`;
+                report += `**❌ 실패**: ${failed}개\n`;
+                report += `**성공률**: ${successRate}%\n\n`;
+                report += "---\n\n";
+
+                report += "## ✅ 성공한 테스트\n\n";
+                testResults
+                    .filter((r) => r.success)
+                    .forEach((r) => {
+                        report += `### [${r.step}] ${r.name}\n`;
+                        report += `- **Method**: ${r.method}\n`;
+                        report += `- **URL**: ${r.url}\n`;
+                        report += `- **Status**: ${r.status}\n`;
+                        report += `- **응답**: \`\`\`json\n${JSON.stringify(
+                            r.response,
+                            null,
+                            2
+                        )}\n\`\`\`\n\n`;
+                    });
+
+                report += "---\n\n";
+                report += "## ❌ 실패한 테스트\n\n";
+                const failedResults = testResults.filter((r) => !r.success);
+                if (failedResults.length === 0) {
+                    report += "없음 - 모든 테스트가 성공했습니다! 🎉\n\n";
+                } else {
+                    failedResults.forEach((r) => {
+                        report += `### [${r.step}] ${r.name}\n`;
+                        report += `- **Method**: ${r.method}\n`;
+                        report += `- **URL**: ${r.url}\n`;
+                        report += `- **Status**: ${r.status || "N/A"}\n`;
+                        report += `- **에러**: \`\`\`json\n${JSON.stringify(
+                            r.error,
+                            null,
+                            2
+                        )}\n\`\`\`\n\n`;
+                    });
+                }
+
+                report += "---\n\n";
+                report += "## 📋 상세 결과\n\n";
+                testResults.forEach((r) => {
+                    const icon = r.success ? "✅" : "❌";
+                    report += `### [${r.step}] ${icon} ${r.name}\n\n`;
+                    report += `- **Method**: \`${r.method}\`\n`;
+                    report += `- **URL**: \`${r.url}\`\n`;
+                    report += `- **Status**: ${r.status || "N/A"}\n`;
+                    if (r.response && r.success) {
+                        report += `- **응답**: \`\`\`json\n${JSON.stringify(
+                            r.response,
+                            null,
+                            2
+                        )}\n\`\`\`\n`;
+                    }
+                    if (r.error && !r.success) {
+                        report += `- **에러**: \`\`\`json\n${JSON.stringify(
+                            r.error,
+                            null,
+                            2
+                        )}\n\`\`\`\n`;
+                    }
+                    report += "\n";
+                });
+
+                const blob = new Blob([report], { type: "text/markdown" });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+
+                log(`\n📄 테스트 결과 파일 다운로드: ${filename}`, "info");
+            }
+
+            // 페이지 로드 시 초기화
+            window.addEventListener("load", () => {
+                log(
+                    "페이지 로드 완료. 테스트를 시작할 준비가 되었습니다.",
+                    "info"
+                );
+                log(
+                    "브라우저 콘솔(F12)을 열어서 상세한 JSON 응답을 확인하세요.",
+                    "info"
+                );
+                updateLoginStatus();
+            });
+        </script>
+    </body>
+</html>

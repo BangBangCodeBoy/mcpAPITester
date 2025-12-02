@@ -4,6 +4,8 @@
 import axios from "axios";
 import { CookieJar } from "tough-cookie";
 import { wrapper } from "axios-cookiejar-support";
+import * as fs from "fs";
+import * as path from "path";
 
 const BACKEND_BASE_URL = "http://localhost:8080";
 
@@ -161,10 +163,15 @@ async function testAllAPIs() {
     // 1-6. 회원 정보 수정 (PATCH /api/members/{memberId})
     if (loggedInMemberId) {
         console.log("\n[1-6] 회원 정보 수정");
-        await testAPI("회원 정보 수정", "PATCH", `/api/members/${loggedInMemberId}`, {
-            nickname: "수정된닉네임",
-            email: "updated@test.com",
-        }).then(printResult);
+        await testAPI(
+            "회원 정보 수정",
+            "PATCH",
+            `/api/members/${loggedInMemberId}`,
+            {
+                nickname: "수정된닉네임",
+                email: "updated@test.com",
+            }
+        ).then(printResult);
     }
 
     // 1-7. 회원 정보 업데이트 (PATCH /api)
@@ -205,7 +212,11 @@ async function testAllAPIs() {
 
     // 3-1. 퀴즈방 목록 조회
     console.log("\n[3-1] 퀴즈방 목록 조회");
-    const roomListResult = await testAPI("퀴즈방 목록 조회", "GET", "/api/quiz-room");
+    const roomListResult = await testAPI(
+        "퀴즈방 목록 조회",
+        "GET",
+        "/api/quiz-room"
+    );
     printResult(roomListResult);
 
     // 3-2. 퀴즈방 생성
@@ -237,9 +248,11 @@ async function testAllAPIs() {
     // 3-4. 퀴즈방 삭제 (테스트용으로 생성한 방 삭제)
     if (quizRoomId) {
         console.log("\n[3-4] 퀴즈방 삭제");
-        await testAPI("퀴즈방 삭제", "DELETE", `/api/quiz-room/${quizRoomId}`).then(
-            printResult
-        );
+        await testAPI(
+            "퀴즈방 삭제",
+            "DELETE",
+            `/api/quiz-room/${quizRoomId}`
+        ).then(printResult);
     }
 
     // ==========================================
@@ -281,7 +294,10 @@ async function testAllAPIs() {
                 "GET",
                 "/api/user-problem-sets/me"
             );
-            if (recheckResult.success && recheckResult.response?.data?.userProblemSetId) {
+            if (
+                recheckResult.success &&
+                recheckResult.response?.data?.userProblemSetId
+            ) {
                 userProblemSetId = recheckResult.response.data.userProblemSetId;
                 console.log(`   📝 생성된 문제세트 ID: ${userProblemSetId}`);
             }
@@ -433,7 +449,9 @@ async function testAllAPIs() {
 
     // 7-1. 오답노트 조회
     console.log("\n[7-1] 오답노트 조회");
-    await testAPI("오답노트 조회", "GET", "/api/incorrect-note").then(printResult);
+    await testAPI("오답노트 조회", "GET", "/api/incorrect-note").then(
+        printResult
+    );
 
     // 7-2. 오답노트 추가 (기본 문제)
     console.log("\n[7-2] 오답노트 추가 (기본 문제)");
@@ -472,11 +490,15 @@ async function testAllAPIs() {
 
     // 7-4. 오답노트 조회 (추가 후)
     console.log("\n[7-4] 오답노트 조회 (추가 후)");
-    await testAPI("오답노트 조회", "GET", "/api/incorrect-note").then(printResult);
+    await testAPI("오답노트 조회", "GET", "/api/incorrect-note").then(
+        printResult
+    );
 
     // 7-5. 오답노트 삭제
     if (incorrectNoteId) {
-        console.log(`\n[7-5] 오답노트 삭제 (incorrectNoteId: ${incorrectNoteId})`);
+        console.log(
+            `\n[7-5] 오답노트 삭제 (incorrectNoteId: ${incorrectNoteId})`
+        );
         await testAPI(
             "오답노트 삭제",
             "DELETE",
@@ -485,9 +507,55 @@ async function testAllAPIs() {
     }
 
     // ==========================================
-    // 8. 로그아웃
+    // 8. UserScoreController 테스트
     // ==========================================
-    console.log("\n\n🔐 [8. 로그아웃]");
+    console.log("\n\n🏆 [8. UserScoreController 테스트]");
+    console.log("=".repeat(80));
+
+    // 8-1. 점수 등록
+    if (loggedInMemberId) {
+        console.log("\n[8-1] 점수 등록");
+        const createScoreResult = await testAPI(
+            "점수 등록",
+            "POST",
+            "/api/scores",
+            {
+                score: 100,
+            }
+        );
+        printResult(createScoreResult);
+    }
+
+    // 8-2. 전체 유저 점수 조회
+    console.log("\n[8-2] 전체 유저 점수 조회");
+    await testAPI("전체 유저 점수 조회", "GET", "/api/scores").then(
+        printResult
+    );
+
+    // 8-3. 특정 유저 점수 조회
+    if (loggedInMemberId) {
+        console.log(
+            `\n[8-3] 특정 유저 점수 조회 (memberId: ${loggedInMemberId})`
+        );
+        await testAPI(
+            "특정 유저 점수 조회",
+            "GET",
+            `/api/scores/${loggedInMemberId}`
+        ).then(printResult);
+    }
+
+    // 8-4. 점수 수정
+    if (loggedInMemberId) {
+        console.log("\n[8-4] 점수 수정");
+        await testAPI("점수 수정", "PUT", "/api/scores", {
+            score: 200,
+        }).then(printResult);
+    }
+
+    // ==========================================
+    // 9. 로그아웃
+    // ==========================================
+    console.log("\n\n🔐 [9. 로그아웃]");
     console.log("=".repeat(80));
 
     await testAPI("로그아웃", "POST", "/api/auth/logout").then(printResult);
@@ -530,7 +598,9 @@ async function testAllAPIs() {
 
     // 컨트롤러별 통계
     console.log("\n\n📊 컨트롤러별 통계:");
-    const controllerStats: { [key: string]: { total: number; success: number } } = {};
+    const controllerStats: {
+        [key: string]: { total: number; success: number };
+    } = {};
     results.forEach((r) => {
         const controller = r.name.split(" ")[0];
         if (!controllerStats[controller]) {
@@ -551,6 +621,69 @@ async function testAllAPIs() {
 
     console.log("\n" + "=".repeat(80));
     console.log("🎉 전체 API 테스트 완료!\n");
+
+    // 테스트 결과를 파일로 저장
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+    const day = String(now.getDate()).padStart(2, "0");
+    const hours = String(now.getHours()).padStart(2, "0");
+    const minutes = String(now.getMinutes()).padStart(2, "0");
+    const timestamp = `${year}-${month}-${day}_${hours}-${minutes}`;
+    const filename = `test-results_${timestamp}.txt`;
+
+    let report = "=".repeat(80) + "\n";
+    report += "📊 전체 API 테스트 결과 보고서\n";
+    report += `테스트 일시: ${year}-${month}-${day} ${hours}:${minutes}\n`;
+    report += `테스트 계정: id: "${testId}", password: "${testPassword}"\n`;
+    report += "=".repeat(80) + "\n\n";
+
+    report += `총 테스트: ${total}개\n`;
+    report += `✅ 성공: ${success}개\n`;
+    report += `❌ 실패: ${failed}개\n`;
+    report += `성공률: ${((success / total) * 100).toFixed(1)}%\n\n`;
+
+    report += "=".repeat(80) + "\n";
+    report += "✅ 성공한 API:\n";
+    report += "=".repeat(80) + "\n";
+    results
+        .filter((r) => r.success)
+        .forEach((r) => {
+            report += `✅ ${r.name}\n`;
+            report += `   ${r.method} ${r.url}\n`;
+            report += `   상태: ${r.status}\n`;
+            report += `   메시지: ${r.message}\n\n`;
+        });
+
+    report += "\n" + "=".repeat(80) + "\n";
+    report += "❌ 실패한 API:\n";
+    report += "=".repeat(80) + "\n";
+    if (failedResults.length === 0) {
+        report += "없음 - 모든 API가 성공했습니다! 🎉\n";
+    } else {
+        failedResults.forEach((r) => {
+            report += `❌ ${r.name}\n`;
+            report += `   ${r.method} ${r.url}\n`;
+            report += `   상태: ${r.status || "N/A"}\n`;
+            report += `   에러: ${r.message}\n\n`;
+        });
+    }
+
+    report += "\n" + "=".repeat(80) + "\n";
+    report += "📊 컨트롤러별 통계:\n";
+    report += "=".repeat(80) + "\n";
+    Object.entries(controllerStats).forEach(([controller, stats]) => {
+        const rate = ((stats.success / stats.total) * 100).toFixed(1);
+        report += `   ${controller}: ${stats.success}/${stats.total} (${rate}%)\n`;
+    });
+
+    report += "\n" + "=".repeat(80) + "\n";
+    report += "🎉 전체 API 테스트 완료!\n";
+    report += "=".repeat(80) + "\n";
+
+    const filePath = path.join(__dirname, filename);
+    fs.writeFileSync(filePath, report, "utf-8");
+    console.log(`\n📄 테스트 결과가 저장되었습니다: ${filename}`);
 }
 
 // 테스트 실행
@@ -558,4 +691,3 @@ testAllAPIs().catch((error) => {
     console.error("\n❌ 테스트 실행 중 오류 발생:", error);
     process.exit(1);
 });
-
