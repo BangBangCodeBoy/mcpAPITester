@@ -1280,54 +1280,62 @@ password:1234로 실행
 -   **Method**: POST
 -   **URL**: /api/scores
 -   **Status**: 500
--   **에러**: ```json
+-   **에러**:
+  ```
+ json
     {
     "status": "INTERNAL_SERVER_ERROR",
     "message": "서버 오류로 점수를 등록하지 못했습니다.",
     "data": null
     }
+```
 
-````
+
 
 ### [10] 댓글 수정
 - **Method**: PATCH
 - **URL**: /api/comments/19/7
 - **Status**: 403
-- **에러**: ```json
+- **에러**:
+```
+json
 {
   "status": "FORBIDDEN",
   "message": "본인의 댓글만 수정할 수 있습니다.",
   "data": null
 }
-````
-
+```
+  
 ### [21] 퀴즈방 멤버 조회
 
 -   **Method**: GET
 -   **URL**: /api/quiz-room/1/member
 -   **Status**: 400
--   **에러**: ```json
+-   **에러**:
+  ```
+json
     {
     "status": "BAD_REQUEST",
     "message": "퀴즈방에 참가자가 없습니다.",
     "data": null
     }
+```
 
-````
 
 ### [22] 퀴즈방 생성
 - **Method**: POST
 - **URL**: /api/quiz-room/create/23
 - **Status**: 400
-- **에러**: ```json
+- **에러**:
+```
+json
 {
   "status": "BAD_REQUEST",
   "message": "한 멤버는 하나의 채팅방에만 들어갈 수 있습니다.",
   "data": null
 }
-````
+```
 
----
 
 **보고서 작성일**: 2025-12-02  
 **테스트 환경**: Spring Boot Backend (localhost:8080), vite프록시 서버 (localhost:5500)
